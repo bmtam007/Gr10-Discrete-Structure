@@ -1,5 +1,6 @@
 #Phần cơ bản
 #1.Vẽ đồ thị trực quan , Dùng 1 đồ thị duy nhất
+#download: pip install networkx matplotlib
 #1.1 Nhập đồ thị
 def input_graph():
     n = int(input("Nhập số cạnh: "))  #u và v là hai đỉnh của cạnh, [u, v] là một cạnh nối 2 đỉnh.
