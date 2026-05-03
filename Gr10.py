@@ -1,7 +1,5 @@
 #Phần cơ bản
 #download: pip install networkx matplotlib
-#1.Vẽ đồ thị trực quan , Dùng 1 đồ thị duy nhất
-#1.1 Nhập đồ thị
 import heapq
 from collections import deque
 import networkx as nx
