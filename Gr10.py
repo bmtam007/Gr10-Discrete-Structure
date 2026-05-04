@@ -147,15 +147,15 @@ def dijkstra(graph, start):
  
  
 def reconstruct_path(prev, start, end):
-    """Truy vết đường đi từ start đến end."""
+    if end not in prev:           # ← thêm dòng này: kiểm tra trước
+        return []
     path = []
     current = end
     while current is not None:
         path.append(current)
-        current = prev[current]
+        current = prev.get(current)   # ← dùng .get() thay vì [] cho an toàn
     path.reverse()
-    # Kiểm tra đường đi hợp lệ
-    if path[0] == start:
+    if path and path[0] == start:     # ← thêm "path and" để tránh IndexError
         return path
     return []
  
@@ -237,143 +237,96 @@ def highlight_path(edges, directed, path):
 
 
 #4. DUYỆT ĐỒ THỊ (BFS / DFS)
-def bfs(edges, directed, start):
-    """
-    Duyệt đồ thị theo chiều rộng (Breadth-First Search).
-    Dùng hàng đợi (deque): lấy từ đầu, thêm vào cuối.
-    Trả về: (order, parent)
-        order  : thứ tự duyệt
-        parent : {đỉnh: đỉnh_cha} – dùng để vẽ cây BFS
-    """
-    G = build_nx_graph(edges, directed)
-    if start not in G.nodes():
-        print(f"✘ Đỉnh '{start}' không tồn tại trong đồ thị.")
-        return [], {}
- 
-    visited = set()
-    queue   = deque([start])
-    order   = []
-    parent  = {start: None}
- 
+def bfs(G, start):
+    """BFS - trả về (order, parent)"""
+    visited, queue, order, parent = set(), deque([start]), [], {start: None}
     while queue:
-        node = queue.popleft()          # lấy phần tử đầu hàng đợi
+        node = queue.popleft()
         if node not in visited:
             visited.add(node)
             order.append(node)
-            for neighbor in sorted(G.neighbors(node)):   # sorted → thứ tự cố định
-                if neighbor not in visited and neighbor not in parent:
-                    parent[neighbor] = node
-                    queue.append(neighbor)
+            for nb in sorted(G.neighbors(node)):
+                if nb not in visited and nb not in parent:
+                    parent[nb] = node
+                    queue.append(nb)
     return order, parent
- 
- 
-def dfs(edges, directed, start):
-    """
-    Duyệt đồ thị theo chiều sâu (Depth-First Search).
-    Dùng đệ quy (call stack).
-    Trả về: (order, parent)
-        order  : thứ tự duyệt
-        parent : {đỉnh: đỉnh_cha} – dùng để vẽ cây DFS
-    """
-    G = build_nx_graph(edges, directed)
-    if start not in G.nodes():
-        print(f"✘ Đỉnh '{start}' không tồn tại trong đồ thị.")
-        return [], {}
- 
-    visited = set()
-    order   = []
-    parent  = {start: None}
- 
-    def dfs_visit(node):
+
+
+def dfs(G, start):
+    """DFS - trả về (order, parent)"""
+    visited, order, parent = set(), [], {start: None}
+    def visit(node):
         visited.add(node)
         order.append(node)
-        for neighbor in sorted(G.neighbors(node)):
-            if neighbor not in visited:
-                parent[neighbor] = node
-                dfs_visit(neighbor)
- 
-    dfs_visit(start)
+        for nb in sorted(G.neighbors(node)):
+            if nb not in visited:
+                parent[nb] = node
+                visit(nb)
+    visit(start)
     return order, parent
- 
- 
+
+
 def draw_traversal(edges, directed, order, parent, title):
     """Vẽ đồ thị và làm nổi bật thứ tự duyệt + cây duyệt."""
     G   = build_nx_graph(edges, directed)
     pos = nx.spring_layout(G, seed=42)
- 
-    # Cạnh thuộc cây duyệt (tree edges)
-    tree_edges = [(parent[v], v) for v in parent if parent[v] is not None]
- 
-    # Màu đỉnh: gradient theo thứ tự duyệt
-    cmap       = plt.cm.YlOrRd
-    color_map  = {}
-    for i, node in enumerate(order):
-        color_map[node] = cmap(0.2 + 0.7 * i / max(len(order) - 1, 1))
+    tree_edges  = [(parent[v], v) for v in parent if parent[v] is not None]
+    cmap        = plt.cm.YlOrRd
+    color_map   = {node: cmap(0.2 + 0.7 * i / max(len(order)-1, 1))
+                   for i, node in enumerate(order)}
     node_colors = [color_map.get(n, (0.7, 0.9, 1.0, 1.0)) for n in G.nodes()]
- 
-    # Màu cạnh
-    edge_colors = []
-    for u, v in G.edges():
-        if (u, v) in tree_edges or (not directed and (v, u) in tree_edges):
-            edge_colors.append('#E74C3C')   # đỏ = cạnh cây
-        else:
-            edge_colors.append('#CCCCCC')   # xám = cạnh còn lại
- 
-    # Nhãn số thứ tự duyệt
-    labels = {n: f"{n}\n(#{order.index(n)+1})" if n in order else n for n in G.nodes()}
- 
+    edge_colors = ['#E74C3C' if (u,v) in tree_edges or (not directed and (v,u) in tree_edges)
+                   else '#CCCCCC' for u, v in G.edges()]
+    labels      = {n: f"{n}\n(#{order.index(n)+1})" if n in order else n for n in G.nodes()}
+    edge_labels = {(u,v): f"{d['weight']:.0f}" for u,v,d in G.edges(data=True)}
     plt.figure(figsize=(9, 6))
-    nx.draw(G, pos, labels=labels, node_color=node_colors,
-            edge_color=edge_colors, node_size=900, font_size=9,
-            arrows=directed, arrowsize=20, width=2)
-    edge_labels = {(u, v): f"{d['weight']:.0f}" for u, v, d in G.edges(data=True)}
+    nx.draw(G, pos, labels=labels, node_color=node_colors, edge_color=edge_colors,
+            node_size=900, font_size=9, arrows=directed, arrowsize=20, width=2)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=9)
     plt.title(f"{title}\nThứ tự: {' → '.join(order)}")
     plt.tight_layout()
     plt.show()
- 
- 
+
+
 def traversal_menu(edges, directed):
-    """Giao diện con chỏ phần duyệt đồ thị."""
+    """Giao diện con cho phần duyệt đồ thị."""
     if not edges:
         print("Chưa có đồ thị. Hãy nhập hoặc tải đồ thị trước.")
         return
- 
+
     G = build_nx_graph(edges, directed)
     print(f"Các đỉnh hiện có: {', '.join(sorted(G.nodes()))}")
     start = input("Nhập đỉnh bắt đầu duyệt: ").strip()
- 
-    print("\n  a. BFS (duyệt theo chiều rộng)")
-    print("  b. DFS (duyệt theo chiều sâu)")
-    print("  c. Cả hai")
+
+    if start not in G.nodes():
+        print(f"✘ Đỉnh '{start}' không tồn tại trong đồ thị.")
+        return
+
+    print("\n  a. BFS\n  b. DFS\n  c. Cả hai")
     sub = input("Chọn: ").strip().lower()
- 
-    if sub in ('a', 'c'):
-        order, parent = bfs(edges, directed, start)
-        if order:
-            print(f"\n✔ BFS từ '{start}': {' → '.join(order)}")
-            draw_traversal(edges, directed, order, parent, f"BFS từ đỉnh '{start}'")
- 
-    if sub in ('b', 'c'):
-        order, parent = dfs(edges, directed, start)
-        if order:
-            print(f"\n✔ DFS từ '{start}': {' → '.join(order)}")
-            draw_traversal(edges, directed, order, parent, f"DFS từ đỉnh '{start}'")
- 
-    if sub not in ('a', 'b', 'c'):
+
+    # Map lựa chọn → (hàm, tên)
+    methods = {'a': (bfs, 'BFS'), 'b': (dfs, 'DFS')}
+    to_run  = [('a', 'BFS'), ('b', 'DFS')] if sub == 'c' else [(sub, methods[sub][1])] if sub in methods else []
+
+    if not to_run:
         print("Lựa chọn không hợp lệ.")
+        return
+
+    for key, name in to_run:
+        fn = methods[key][0]
+        order, parent = fn(G, start)
+        if order:
+            print(f"\n✔ {name} từ '{start}': {' → '.join(order)}")
+            draw_traversal(edges, directed, order, parent, f"{name} từ đỉnh '{start}'")
 
 #5. KIỂM TRA 1 ĐỒ THỊ CÓ PHẢI LÀ 2 PHÍA HAY KHÔNG?
-def bipartite_menu(edges):
-    """Kiểm tra đồ thị 2 phía bằng thuật toán tô màu BFS."""
-    if not edges:
-        print("Chưa có đồ thị. Hãy nhập hoặc tải đồ thị trước.")
-        return
-    if directed:
-        print("⚠ Kiểm tra đồ thị 2 phía chỉ áp dụng cho đồ thị VÔ HƯỚNG.")
-        print("  Đồ thị hiện tại là có hướng — kết quả có thể không chính xác.")
- 
-    # Bước 1: Xây dựng danh sách kề (vô hướng, bỏ qua trọng số)
+def is_bipartite(edges):
+    # Kiểm tra đồ thị có phải là đồ thị 2 phía không.
+    #- Nếu 2 đỉnh kề nhau cùng màu → KHÔNG phải 2 phía
+    #- Tô màu xong hết mà không xung đột → LÀ đồ thị 2 phía
+    #Lưu ý: dùng đỉnh dạng chuỗi ("A","B",...) thay vì số nguyên
+    # Xây dựng danh sách kề (vô hướng, không cần trọng số)
     graph = {}
     for u, v, w in edges:
         if u not in graph: graph[u] = []
@@ -381,43 +334,71 @@ def bipartite_menu(edges):
         graph[u].append(v)
         graph[v].append(u)   # vô hướng → thêm cả 2 chiều
  
-    # Bước 2: Tô màu BFS – color[đỉnh] = 0 hoặc 1
-    color  = {}
-    result = True
+    color = {}   # {đỉnh: 0 hoặc 1} – thay mảng color[] trong demo
+ 
     for start in graph:
-        if start not in color:
+        if start not in color:          # chưa tô màu → bắt đầu BFS từ đây
             queue = deque([start])
             color[start] = 0
+ 
             while queue:
                 u = queue.popleft()
                 for v in graph[u]:
-                    if v not in color:          # chưa tô → tô màu ngược
+                    if v not in color:              # chưa tô → tô màu ngược
                         color[v] = 1 - color[u]
                         queue.append(v)
-                    elif color[v] == color[u]:  # cùng màu → xung đột!
-                        result = False
+                    elif color[v] == color[u]:      # cùng màu → xung đột!
+                        return False, color, graph
  
-    # Bước 3: In kết quả và vẽ
+    return True, color, graph
+ 
+ 
+def draw_bipartite(edges, color):
+    """Vẽ đồ thị và tô 2 màu cho 2 tập đỉnh."""
+    G  = build_nx_graph(edges, directed)
+    pos = nx.spring_layout(G, seed=42)
+ 
+    # Tập A (màu 0 → xanh dương), Tập B (màu 1 → cam)
+    node_colors = ['#3498DB' if color.get(n) == 0 else '#E67E22' for n in G.nodes()]
+ 
+    edge_labels = {(u, v): f"{d['weight']:.0f}" for u, v, d in G.edges(data=True)}
+ 
+    # Tạo nhãn kèm tên tập
     set_A = sorted([n for n in color if color[n] == 0])
     set_B = sorted([n for n in color if color[n] == 1])
+ 
+    plt.figure(figsize=(9, 6))
+    nx.draw(G, pos, with_labels=True, node_color=node_colors,
+            node_size=800, font_size=12, font_color='white',
+            width=2, edge_color='#888888')
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=10)
+    plt.title(
+        f"Đồ thị 2 phía ✔\n"
+        f"Tập A (xanh): {{{', '.join(set_A)}}}    "
+        f"Tập B (cam): {{{', '.join(set_B)}}}"
+    )
+    plt.tight_layout()
+    plt.show()
+ 
+ 
+def bipartite_menu(edges):
+    """Giao diện con cho phần kiểm tra đồ thị 2 phía."""
+    if not edges:
+        print("Chưa có đồ thị. Hãy nhập hoặc tải đồ thị trước.")
+        return
+    if directed:
+        print("⚠ Kiểm tra đồ thị 2 phía chỉ áp dụng cho đồ thị VÔ HƯỚNG.")
+        print("  Đồ thị hiện tại là có hướng — kết quả có thể không chính xác.")
+
+    result, color, graph = is_bipartite(edges)
+ 
     if result:
-        print(f"\n✔ Đây LÀ đồ thị 2 phía!")
+        set_A = sorted([n for n in color if color[n] == 0])
+        set_B = sorted([n for n in color if color[n] == 1])
+        print("\n✔ Đây LÀ đồ thị 2 phía!")
         print(f"   Tập A: {{{', '.join(set_A)}}}")
         print(f"   Tập B: {{{', '.join(set_B)}}}")
-        G   = build_nx_graph(edges, directed)
-        pos = nx.spring_layout(G, seed=42)
-        node_colors = ['#3498DB' if color.get(n)==0 else '#E67E22' for n in G.nodes()]
-        edge_labels = {(u,v): f"{d['weight']:.0f}" for u,v,d in G.edges(data=True)}
-        plt.figure(figsize=(9, 6))
-        nx.draw(G, pos, with_labels=True, node_color=node_colors,
-                node_size=800, font_size=12, font_color='white',
-                width=2, edge_color='#888888')
-        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=10)
-        plt.title(f"Đồ thị 2 phía ✔\n"
-                  f"Tập A (xanh): {{{', '.join(set_A)}}}    "
-                  f"Tập B (cam): {{{', '.join(set_B)}}}")
-        plt.tight_layout()
-        plt.show()
+        draw_bipartite(edges, color)
     else:
         print("\n✘ Đây KHÔNG phải đồ thị 2 phía!")
         print("   (Tồn tại cạnh nối 2 đỉnh cùng tập)")
