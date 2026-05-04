@@ -1,5 +1,6 @@
 # Gr10-Discrete Structure
 [012012204419] - Cấu trúc rời rạc - 7480201369369
+
 Member:
 - Lê Hoàng Lan Anh MSSV:
 - Trần Thành Danh MSSV:
