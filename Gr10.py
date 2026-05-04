@@ -1,5 +1,7 @@
 #Phần cơ bản
 #download: pip install networkx matplotlib
+#1.Vẽ đồ thị trực quan , Dùng 1 đồ thị duy nhất
+#1.1 Nhập đồ thị
 import heapq
 from collections import deque
 import networkx as nx
@@ -13,10 +15,13 @@ edges    = []        # [(u, v, weight), ...]
 directed = False     # CỐ ĐỊNH: đồ thị vô hướng
 
 
-#1 VẼ ĐỒ THỊ TRỰC QUAN
+#1 VẼ ĐÒ THỊ TRỰC QUAN
 #1.1 Nhập đồ thị từ người dùng
 def input_graph():
     """Nhập đồ thị vô hướng từ bàn phím (hỗ trợ trọng số tuỳ chọn)."""
+    global directed
+    loai = input("Đồ thị có hướng? (y/n): ").strip().lower()
+    directed = loai == 'y'
     n = int(input("Nhập số cạnh: "))
     new_edges = []
     for _ in range(n):
@@ -424,7 +429,10 @@ def bipartite_menu(edges):
     if not edges:
         print("Chưa có đồ thị. Hãy nhập hoặc tải đồ thị trước.")
         return
- 
+    if directed:
+        print("⚠ Kiểm tra đồ thị 2 phía chỉ áp dụng cho đồ thị VÔ HƯỚNG.")
+        print("  Đồ thị hiện tại là có hướng — kết quả có thể không chính xác.")
+
     result, color, graph = is_bipartite(edges)
  
     if result:
@@ -438,15 +446,200 @@ def bipartite_menu(edges):
         print("\n✘ Đây KHÔNG phải đồ thị 2 phía!")
         print("   (Tồn tại cạnh nối 2 đỉnh cùng tập)")
 
+#6. CHUYỂN ĐỔI MA TRẬN KỀ → DANH SÁCH KỀ → DANH SÁCH CẠNH
+def edges_to_adjacency_matrix(edges, directed):
+    """
+    Danh sách cạnh → Ma trận kề
+    Ô [i][j] = trọng số nếu có cạnh, 0 nếu không có.
+    Vô hướng: ma trận đối xứng. Có hướng: chỉ 1 chiều.
+    """
+    nodes = sorted(set(u for u, v, w in edges) | set(v for u, v, w in edges))
+    idx   = {node: i for i, node in enumerate(nodes)}
+    n     = len(nodes)
+    matrix = [[0] * n for _ in range(n)]
+    for u, v, w in edges:
+        matrix[idx[u]][idx[v]] = w
+        if not directed:
+            matrix[idx[v]][idx[u]] = w   # vô hướng → đối xứng
+    return nodes, matrix
+ 
+ 
+def edges_to_adjacency_list(edges, directed):
+    """
+    Danh sách cạnh → Danh sách kề
+    {đỉnh: [(đỉnh_kề, trọng_số), ...]}
+    """
+    adj = {}
+    for u, v, w in edges:
+        if u not in adj: adj[u] = []
+        if v not in adj: adj[v] = []
+        adj[u].append((v, w))
+        if not directed:
+            adj[v].append((u, w))   # vô hướng → thêm chiều ngược
+    return adj
+ 
+ 
+# ── CHUYỂN TỪ Ma trận kề → các dạng khác ─────────────────
+ 
+def adjacency_matrix_to_edges(nodes, matrix, directed):
+    """Ma trận kề → Danh sách cạnh."""
+    edges_out = []
+    n = len(nodes)
+    for i in range(n):
+        # Có hướng: duyệt cả j, Vô hướng: chỉ j > i để tránh trùng
+        start_j = 0 if directed else i + 1
+        for j in range(start_j, n):
+            if i != j and matrix[i][j] != 0:
+                edges_out.append((nodes[i], nodes[j], matrix[i][j]))
+    return edges_out
+ 
+ 
+def adjacency_matrix_to_adj_list(nodes, matrix):
+    """Ma trận kề → Danh sách kề."""
+    adj = {node: [] for node in nodes}
+    n   = len(nodes)
+    for i in range(n):
+        for j in range(n):
+            if matrix[i][j] != 0:
+                adj[nodes[i]].append((nodes[j], matrix[i][j]))
+    return adj
+ 
+ 
+# ── CHUYỂN TỪ Danh sách kề → các dạng khác ───────────────
+ 
+def adj_list_to_edges(adj, directed):
+    """Danh sách kề → Danh sách cạnh."""
+    edges_out = []
+    seen = set()
+    for u in adj:
+        for v, w in adj[u]:
+            if directed:
+                edges_out.append((u, v, w))   # có hướng → giữ nguyên chiều
+            else:
+                key = (min(u, v), max(u, v))  # vô hướng → tránh trùng (A,B) và (B,A)
+                if key not in seen:
+                    seen.add(key)
+                    edges_out.append((u, v, w))
+    return edges_out
+ 
+ 
+def adj_list_to_matrix(adj):
+    """Danh sách kề → Ma trận kề."""
+    nodes = sorted(adj.keys())
+    idx   = {node: i for i, node in enumerate(nodes)}
+    n     = len(nodes)
+    matrix = [[0] * n for _ in range(n)]
+    for u in adj:
+        for v, w in adj[u]:
+            matrix[idx[u]][idx[v]] = w
+    return nodes, matrix
+ 
+ 
+# ── IN ĐẸP ────────────────────────────────────────────────
+ 
+def print_adjacency_matrix(nodes, matrix):
+    """In ma trận kề ra màn hình dạng bảng."""
+    col_w = max(len(str(n)) for n in nodes) + 2   # độ rộng cột
+    # Header
+    print("\n  Ma trận kề:")
+    header = " " * (col_w + 1) + "".join(f"{n:>{col_w}}" for n in nodes)
+    print(header)
+    print(" " * (col_w + 1) + "-" * (col_w * len(nodes)))
+    for i, node in enumerate(nodes):
+        row = f"{node:>{col_w}} |" + "".join(
+            f"{int(matrix[i][j]) if matrix[i][j] == int(matrix[i][j]) else matrix[i][j]:>{col_w}}"
+            for j in range(len(nodes))
+        )
+        print(row)
+ 
+ 
+def print_adjacency_list(adj):
+    """In danh sách kề ra màn hình."""
+    print("\n  Danh sách kề:")
+    for node in sorted(adj.keys()):
+        neighbors = ", ".join(
+            f"{v}(w={int(w) if w == int(w) else w})" for v, w in adj[node]
+        )
+        print(f"    {node}: [{neighbors}]")
+ 
+ 
+def print_edge_list(edges_list):
+    """In danh sách cạnh ra màn hình."""
+    print("\n  Danh sách cạnh:")
+    for u, v, w in edges_list:
+        ww = int(w) if w == int(w) else w
+        print(f"    ({u}, {v}, trọng_số={ww})")
 
+#Menu phần 6
+def representation_menu(edges, directed):
+    """Giao diện con cho phần chuyển đổi biểu diễn."""
+    if not edges:
+        print("Chưa có đồ thị. Hãy nhập hoặc tải đồ thị trước.")
+        return
+ 
+    loai_str = "có hướng" if directed else "vô hướng"
+ 
+    while True:
+        print(f"\n  --- Chuyển đổi biểu diễn ({loai_str}) ---")
+        print("  a. Xem tất cả 3 dạng")
+        print("  b. Danh sách cạnh → Ma trận kề")
+        print("  c. Danh sách cạnh → Danh sách kề")
+        print("  d. Ma trận kề     → Danh sách kề")
+        print("  e. Ma trận kề     → Danh sách cạnh")
+        print("  f. Danh sách kề   → Ma trận kề")
+        print("  g. Danh sách kề   → Danh sách cạnh")
+        print("  0. Quay lại")
+        sub = input("  Chọn: ").strip().lower()
+ 
+        if sub == '0':
+            break
+ 
+        elif sub == 'a':
+            nodes, matrix = edges_to_adjacency_matrix(edges, directed)
+            adj           = edges_to_adjacency_list(edges, directed)
+            print_edge_list(edges)
+            print_adjacency_list(adj)
+            print_adjacency_matrix(nodes, matrix)
+ 
+        elif sub == 'b':
+            nodes, matrix = edges_to_adjacency_matrix(edges, directed)
+            print_adjacency_matrix(nodes, matrix)
+ 
+        elif sub == 'c':
+            adj = edges_to_adjacency_list(edges, directed)
+            print_adjacency_list(adj)
+ 
+        elif sub == 'd':
+            nodes, matrix = edges_to_adjacency_matrix(edges, directed)
+            adj = adjacency_matrix_to_adj_list(nodes, matrix)
+            print_adjacency_list(adj)
+ 
+        elif sub == 'e':
+            nodes, matrix = edges_to_adjacency_matrix(edges, directed)
+            edges_out     = adjacency_matrix_to_edges(nodes, matrix, directed)
+            print_edge_list(edges_out)
+ 
+        elif sub == 'f':
+            adj           = edges_to_adjacency_list(edges, directed)
+            nodes, matrix = adj_list_to_matrix(adj)
+            print_adjacency_matrix(nodes, matrix)
+ 
+        elif sub == 'g':
+            adj       = edges_to_adjacency_list(edges, directed)
+            edges_out = adj_list_to_edges(adj, directed)
+            print_edge_list(edges_out)
+ 
+        else:
+            print("  Lựa chọn không hợp lệ.")
 
 #Main Chính
 def main():
     global edges, directed
  
     while True:
+        loai_str = "có hướng" if directed else "vô hướng"
         print(f"\n{'='*45}")
-        print(f"   ĐỒ THỊ VÔ HƯỚNG – {len(edges)} cạnh")
+        print(f"   ĐỒ THỊ ({loai_str}) – {len(edges)} cạnh")
         print(f"{'='*45}")
         print("  1. Nhập đồ thị mới")
         print("  2. Lưu đồ thị vào file")
@@ -455,6 +648,7 @@ def main():
         print("  5. Tìm đường đi ngắn nhất (Dijkstra)")
         print("  6. Duyệt đồ thị (BFS / DFS)")
         print("  7. Kiểm tra đồ thị 2 phía")
+        print("  8. Chuyển đổi biểu diễn đồ thị")
         print("  0. Thoát")
         print(f"{'='*45}")
  
@@ -486,6 +680,9 @@ def main():
  
         elif choice == '7':
             bipartite_menu(edges)
+
+        elif choice == '8':
+            representation_menu(edges, directed)
  
         elif choice == '0':
             print("Tạm biệt!")
@@ -496,3 +693,6 @@ def main():
  
 if __name__ == "__main__":
     main()
+        
+  
+
