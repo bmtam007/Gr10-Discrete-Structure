@@ -54,11 +54,12 @@ def draw_graph(edges, directed):
     plt.figure(figsize=(8, 6))
     nx.draw(G, pos, with_labels=True, node_color='skyblue',
             node_size=700, font_size=12, arrows=directed,
-            arrowsize=20, width=2)
+            arrowsize=20 if directed else 10,   # ← sửa dòng này
+        width=2)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=10)
     title = "Đồ thị có hướng" if directed else "Đồ thị vô hướng"
     plt.title(title)
-    plt.tight_layout()
+    plt.subplots_adjust(left=0.05, right=0.95, top=0.92, bottom=0.05)
     plt.show()
 
 
