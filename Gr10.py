@@ -21,7 +21,7 @@ def input_graph():
     """Nhập đồ thị vô hướng từ bàn phím (hỗ trợ trọng số tuỳ chọn)."""
     global directed
     loai = input("Đồ thị có hướng? (y/n): ").strip().lower()
-    directed = loai == 'y'
+    directed = loai == 'y' ## True nếu gõ 'y', False nếu không
     n = int(input("Nhập số cạnh: "))
     new_edges = []
     for _ in range(n):
@@ -334,7 +334,7 @@ def draw_traversal(edges, directed, order, parent, title):
  
  
 def traversal_menu(edges, directed):
-    """Giao diện con cho phần duyệt đồ thị."""
+    """Giao diện con chỏ phần duyệt đồ thị."""
     if not edges:
         print("Chưa có đồ thị. Hãy nhập hoặc tải đồ thị trước.")
         return
@@ -364,12 +364,16 @@ def traversal_menu(edges, directed):
         print("Lựa chọn không hợp lệ.")
 
 #5. KIỂM TRA 1 ĐỒ THỊ CÓ PHẢI LÀ 2 PHÍA HAY KHÔNG?
-def is_bipartite(edges):
-    # Kiểm tra đồ thị có phải là đồ thị 2 phía không.
-    #- Nếu 2 đỉnh kề nhau cùng màu → KHÔNG phải 2 phía
-    #- Tô màu xong hết mà không xung đột → LÀ đồ thị 2 phía
-    #Lưu ý: dùng đỉnh dạng chuỗi ("A","B",...) thay vì số nguyên
-    # Xây dựng danh sách kề (vô hướng, không cần trọng số)
+def bipartite_menu(edges):
+    """Kiểm tra đồ thị 2 phía bằng thuật toán tô màu BFS."""
+    if not edges:
+        print("Chưa có đồ thị. Hãy nhập hoặc tải đồ thị trước.")
+        return
+    if directed:
+        print("⚠ Kiểm tra đồ thị 2 phía chỉ áp dụng cho đồ thị VÔ HƯỚNG.")
+        print("  Đồ thị hiện tại là có hướng — kết quả có thể không chính xác.")
+ 
+    # Bước 1: Xây dựng danh sách kề (vô hướng, bỏ qua trọng số)
     graph = {}
     for u, v, w in edges:
         if u not in graph: graph[u] = []
@@ -377,71 +381,43 @@ def is_bipartite(edges):
         graph[u].append(v)
         graph[v].append(u)   # vô hướng → thêm cả 2 chiều
  
-    color = {}   # {đỉnh: 0 hoặc 1} – thay mảng color[] trong demo
- 
+    # Bước 2: Tô màu BFS – color[đỉnh] = 0 hoặc 1
+    color  = {}
+    result = True
     for start in graph:
-        if start not in color:          # chưa tô màu → bắt đầu BFS từ đây
+        if start not in color:
             queue = deque([start])
             color[start] = 0
- 
             while queue:
                 u = queue.popleft()
                 for v in graph[u]:
-                    if v not in color:              # chưa tô → tô màu ngược
+                    if v not in color:          # chưa tô → tô màu ngược
                         color[v] = 1 - color[u]
                         queue.append(v)
-                    elif color[v] == color[u]:      # cùng màu → xung đột!
-                        return False, color, graph
+                    elif color[v] == color[u]:  # cùng màu → xung đột!
+                        result = False
  
-    return True, color, graph
- 
- 
-def draw_bipartite(edges, color):
-    """Vẽ đồ thị và tô 2 màu cho 2 tập đỉnh."""
-    G  = build_nx_graph(edges, directed)
-    pos = nx.spring_layout(G, seed=42)
- 
-    # Tập A (màu 0 → xanh dương), Tập B (màu 1 → cam)
-    node_colors = ['#3498DB' if color.get(n) == 0 else '#E67E22' for n in G.nodes()]
- 
-    edge_labels = {(u, v): f"{d['weight']:.0f}" for u, v, d in G.edges(data=True)}
- 
-    # Tạo nhãn kèm tên tập
+    # Bước 3: In kết quả và vẽ
     set_A = sorted([n for n in color if color[n] == 0])
     set_B = sorted([n for n in color if color[n] == 1])
- 
-    plt.figure(figsize=(9, 6))
-    nx.draw(G, pos, with_labels=True, node_color=node_colors,
-            node_size=800, font_size=12, font_color='white',
-            width=2, edge_color='#888888')
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=10)
-    plt.title(
-        f"Đồ thị 2 phía ✔\n"
-        f"Tập A (xanh): {{{', '.join(set_A)}}}    "
-        f"Tập B (cam): {{{', '.join(set_B)}}}"
-    )
-    plt.tight_layout()
-    plt.show()
- 
- 
-def bipartite_menu(edges):
-    """Giao diện con cho phần kiểm tra đồ thị 2 phía."""
-    if not edges:
-        print("Chưa có đồ thị. Hãy nhập hoặc tải đồ thị trước.")
-        return
-    if directed:
-        print("⚠ Kiểm tra đồ thị 2 phía chỉ áp dụng cho đồ thị VÔ HƯỚNG.")
-        print("  Đồ thị hiện tại là có hướng — kết quả có thể không chính xác.")
-
-    result, color, graph = is_bipartite(edges)
- 
     if result:
-        set_A = sorted([n for n in color if color[n] == 0])
-        set_B = sorted([n for n in color if color[n] == 1])
-        print("\n✔ Đây LÀ đồ thị 2 phía!")
+        print(f"\n✔ Đây LÀ đồ thị 2 phía!")
         print(f"   Tập A: {{{', '.join(set_A)}}}")
         print(f"   Tập B: {{{', '.join(set_B)}}}")
-        draw_bipartite(edges, color)
+        G   = build_nx_graph(edges, directed)
+        pos = nx.spring_layout(G, seed=42)
+        node_colors = ['#3498DB' if color.get(n)==0 else '#E67E22' for n in G.nodes()]
+        edge_labels = {(u,v): f"{d['weight']:.0f}" for u,v,d in G.edges(data=True)}
+        plt.figure(figsize=(9, 6))
+        nx.draw(G, pos, with_labels=True, node_color=node_colors,
+                node_size=800, font_size=12, font_color='white',
+                width=2, edge_color='#888888')
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=10)
+        plt.title(f"Đồ thị 2 phía ✔\n"
+                  f"Tập A (xanh): {{{', '.join(set_A)}}}    "
+                  f"Tập B (cam): {{{', '.join(set_B)}}}")
+        plt.tight_layout()
+        plt.show()
     else:
         print("\n✘ Đây KHÔNG phải đồ thị 2 phía!")
         print("   (Tồn tại cạnh nối 2 đỉnh cùng tập)")
