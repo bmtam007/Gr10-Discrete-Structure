@@ -52,10 +52,15 @@ def draw_graph(edges, directed):
     edge_labels = {(u, v): f"{d['weight']:.0f}" for u, v, d in G.edges(data=True)}
  
     plt.figure(figsize=(8, 6))
-    nx.draw(G, pos, with_labels=True, node_color='skyblue',
-            node_size=700, font_size=12, arrows=directed,
-            arrowsize=20 if directed else 10,   # ← sửa dòng này
-        width=2)
+
+    nx.draw(G, pos,
+            with_labels=True,
+            node_color='skyblue',
+            node_size=700,
+            font_size=12,
+            arrows=directed,
+            arrowsize=20 if directed else None,
+            width=2)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=10)
     title = "Đồ thị có hướng" if directed else "Đồ thị vô hướng"
     plt.title(title)
@@ -232,7 +237,7 @@ def highlight_path(edges, directed, path):
             arrows=directed, arrowsize=20, width=2)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=10)
     plt.title("Đường đi ngắn nhất (màu đỏ)")
-    plt.tight_layout()
+    plt.subplots_adjust(left=0.05, right=0.95, top=0.9, bottom=0.05)
     plt.show()
 
 
@@ -285,7 +290,7 @@ def draw_traversal(edges, directed, order, parent, title):
             node_size=900, font_size=9, arrows=directed, arrowsize=20, width=2)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=9)
     plt.title(f"{title}\nThứ tự: {' → '.join(order)}")
-    plt.tight_layout()
+    plt.subplots_adjust(left=0.05, right=0.95, top=0.92, bottom=0.05)
     plt.show()
 
 
@@ -378,7 +383,7 @@ def draw_bipartite(edges, color):
         f"Tập A (xanh): {{{', '.join(set_A)}}}    "
         f"Tập B (cam): {{{', '.join(set_B)}}}"
     )
-    plt.tight_layout()
+    plt.subplots_adjust(left=0.05, right=0.95, top=0.92, bottom=0.05)
     plt.show()
  
  
