@@ -684,6 +684,71 @@ def prim_menu(edges):
 
     draw_mst(edges, mst_edges)
 
+#7.2 KRUSKAL
+class DisjointSet:
+    def __init__(self, nodes):
+        self.parent = {n: n for n in nodes}
+        self.rank   = {n: 0 for n in nodes}
+
+    def find(self, u):
+        if self.parent[u] != u:
+            self.parent[u] = self.find(self.parent[u])  # nén đường
+        return self.parent[u]
+
+    def union(self, u, v):
+        root_u = self.find(u)
+        root_v = self.find(v)
+
+        if root_u == root_v:
+            return False  # tạo chu trình
+        # union by rank
+        if self.rank[root_u] < self.rank[root_v]:
+            self.parent[root_u] = root_v
+        elif self.rank[root_u] > self.rank[root_v]:
+            self.parent[root_v] = root_u
+        else:
+            self.parent[root_v] = root_u
+            self.rank[root_u] += 1
+
+        return True
+def kruskal(edges):
+    # edges: [(u, v, weight)]
+    edges.sort(key=lambda x: x[2])  # sắp xếp theo trọng số
+
+    nodes = set(u for u,v,w in edges) | set(v for u,v,w in edges)
+    ds = DisjointSet(nodes)
+    mst = []
+    total_weight = 0
+
+    for u, v, w in edges:
+        if ds.union(u, v):
+            mst.append((u, v, w))
+            total_weight += w
+
+    return mst, total_weight
+def kruskal_menu(edges):
+    if not edges:
+        print("Chưa có đồ thị.")
+        return
+    if directed:
+        print("⚠ Kruskal chỉ dùng cho đồ thị vô hướng.")
+        return
+
+    mst, total = kruskal(edges)
+
+    if len(mst) != len(set(u for u,v,w in edges) | set(v for u,v,w in edges)) - 1:
+        print("⚠ Đồ thị KHÔNG liên thông → Không có MST đầy đủ")
+    else:
+        print("\n✔ Cây khung nhỏ nhất (MST - Kruskal):")
+        for u, v, w in mst:
+            print(f"  {u} - {v} (w={w})")
+        print(f"Tổng trọng số: {total}")
+
+    draw_mst(edges, mst)   # dùng lại hàm draw_mst của Prim
+
+
+
+
 #7.3 FORD-FULKERSON (TÌM LUỒNG CỰC ĐẠI)
 def ford_fulkerson_menu():
     # Tạo đồ thị có hướng với dung lượng (capacity)
@@ -846,6 +911,7 @@ def main():
         print("  8. Chuyển đổi biểu diễn đồ thị")
         print("  --- Nâng cao ---")   
         print("  9. Prim (Minimum Spanning Tree)")
+        print("  10. Kruskal (Minimum Spanning Tree)")
         print("  11. Trực quan hóa Ford-Fulkeron")
         print("  12. Fleury (Đường đi Euler)")
         print("  13. Hierholzer (Đường đi Euler)")
@@ -887,6 +953,9 @@ def main():
         elif choice == '9':
             prim_menu(edges)
  
+        elif choice == '10':
+            kruskal_menu(edges)
+ 
         elif choice == '11':
             ford_fulkerson_menu()
         
@@ -906,3 +975,5 @@ def main():
 if __name__ == "__main__":
     main()
         
+  
+
