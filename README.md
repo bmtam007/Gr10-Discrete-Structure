@@ -3,7 +3,7 @@
 
 Member:
 - Lê Hoàng Lan Anh MSSV:
-- Trần Thành Danh MSSV:
+- Trần Thành Danh MSSV:xxx (Nghỉ học )
 - Nguyễn Ngọc Hân MSSV:
 - Bùi Minh Tâm MSSV:
 - Lương Hoài Sơn MSSV:
