@@ -34,9 +34,9 @@ def input_graph():
  
 def build_nx_graph(edges, directed):
     """Tạo đối tượng NetworkX từ danh sách cạnh."""
-    G = nx.DiGraph() if directed else nx.Graph()
+    G = nx.DiGraph() if directed else nx.Graph() # có hướng → DiGraph, vô hướng → Graph
     for u, v, w in edges:
-        G.add_edge(u, v, weight=w)
+        G.add_edge(u, v, weight=w) # thêm cạnh với trọng số (dưới dạng thuộc tính 'weight')
     return G
  
 #1.2 Vẽ đồ thị trực quan 
@@ -54,13 +54,13 @@ def draw_graph(edges, directed):
     plt.figure(figsize=(8, 6))
 
     nx.draw(G, pos,
-            with_labels=True,
-            node_color='skyblue',
-            node_size=700,
-            font_size=12,
-            arrows=directed,
-            arrowsize=20 if directed else None,
-            width=2)
+        with_labels=True,
+        node_color='skyblue',
+        node_size=700,
+        font_size=12,
+        arrows=directed,
+        arrowsize=20 if directed else 10,
+        width=2) #hiện trọng số cạnh
     nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=10)
     title = "Đồ thị có hướng" if directed else "Đồ thị vô hướng"
     plt.title(title)
@@ -75,9 +75,9 @@ FILENAME = "graph.txt"
 def save_graph(edges, directed):
     """Lưu đồ thị vào file (ghi đè)."""
     with open(FILENAME, 'w') as f:
-        f.write(f"directed={'yes' if directed else 'no'}\n")
+        f.write(f"directed={'yes' if directed else 'no'}\n")  #Lưu đúng đồ thị 
         for u, v, w in edges:
-            f.write(f"{u} {v} {w}\n")
+            f.write(f"{u} {v} {w}\n") #Lưu từng cạnh theo định dạng: u v trọng_số
     print(f"✔ Đã lưu đồ thị vào '{FILENAME}'.")
  
 
@@ -153,7 +153,7 @@ def dijkstra(graph, start):
  
  
 def reconstruct_path(prev, start, end):
-    if end not in prev:           # ← thêm dòng này: kiểm tra trước
+    if start not in prev or end not in prev:           # ← thêm dòng này: kiểm tra trước
         return []
     path = []
     current = end
@@ -235,7 +235,6 @@ def highlight_path(edges, directed, path):
     nx.draw(G, pos, with_labels=True, node_color=node_colors,
             edge_color=edge_colors, node_size=700, font_size=12,
             arrows=directed, arrowsize=20, width=2)
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=10)
     plt.title("Đường đi ngắn nhất (màu đỏ)")
     plt.subplots_adjust(left=0.05, right=0.95, top=0.9, bottom=0.05)
     plt.show()
@@ -416,10 +415,10 @@ def edges_to_adjacency_matrix(edges, directed):
     Ô [i][j] = trọng số nếu có cạnh, 0 nếu không có.
     Vô hướng: ma trận đối xứng. Có hướng: chỉ 1 chiều.
     """
-    nodes = sorted(set(u for u, v, w in edges) | set(v for u, v, w in edges))
+    nodes = sorted(set(u for u, v, w in edges) | set(v for u, v, w in edges)) #Lấy danh sách đỉnh
     idx   = {node: i for i, node in enumerate(nodes)}
     n     = len(nodes)
-    matrix = [[0] * n for _ in range(n)]
+    matrix = [[0] * n for _ in range(n)] #Gán trọng số vào ma trận
     for u, v, w in edges:
         matrix[idx[u]][idx[v]] = w
         if not directed:
@@ -595,6 +594,239 @@ def representation_menu(edges, directed):
         else:
             print("  Lựa chọn không hợp lệ.")
 
+#PHẦN NÂNG CAO
+#7.1 PRIM'S ALGORITHM (TÌM CÂY KHUNG NHỎ NHẤT)
+def prim(graph, start):
+    """Thuật toán Prim - tìm cây khung nhỏ nhất"""
+    visited = set([start])
+    edges_mst = []
+    total_weight = 0
+
+    pq = []
+    for v, w in graph[start]:
+        heapq.heappush(pq, (w, start, v))
+
+    while pq:
+        weight, u, v = heapq.heappop(pq)
+
+        if v in visited:
+            continue
+
+        visited.add(v)
+        edges_mst.append((u, v, weight))
+        total_weight += weight
+
+        for next_v, next_w in graph[v]:
+            if next_v not in visited:
+                heapq.heappush(pq, (next_w, v, next_v))
+
+    return edges_mst, total_weight
+#Vẽ cây khung nhỏ nhất
+def draw_mst(edges, mst_edges):
+    """Vẽ MST (cạnh đỏ)"""
+    G = build_nx_graph(edges, False)
+    pos = nx.spring_layout(G, seed=42)
+
+    mst_set = {(u, v) for u, v, w in mst_edges}
+    mst_set |= {(v, u) for u, v, w in mst_edges}
+
+    edge_colors = []
+    for u, v in G.edges():
+        if (u, v) in mst_set:
+            edge_colors.append('red')
+        else:
+            edge_colors.append('#CCCCCC')
+
+    edge_labels = {(u, v): f"{d['weight']:.0f}" for u, v, d in G.edges(data=True)}
+
+    plt.figure(figsize=(8, 6))
+    nx.draw(G, pos,
+            with_labels=True,
+            node_color='skyblue',
+            edge_color=edge_colors,
+            node_size=700,
+            font_size=12,
+            width=2)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
+    plt.title("Minimum Spanning Tree (Prim)")
+    plt.subplots_adjust(left=0.05, right=0.95, top=0.9, bottom=0.05)
+    plt.show()
+#MENU PRIM
+def prim_menu(edges):
+    if not edges:
+        print("Chưa có đồ thị.")
+        return
+
+    if directed:
+        print("⚠ Prim chỉ dùng cho đồ thị vô hướng.")
+        return
+
+    graph = build_adj(edges, False)
+
+    print(f"Các đỉnh: {', '.join(sorted(graph.keys()))}")
+    start = input("Nhập đỉnh bắt đầu: ").strip()
+
+    if start not in graph:
+        print("Đỉnh không tồn tại.")
+        return
+
+    mst_edges, total = prim(graph, start)
+
+    # ✅ Kiểm tra liên thông (đặt ĐÚNG chỗ)
+    if len(mst_edges) != len(graph) - 1:
+        print("⚠ Đồ thị KHÔNG liên thông → Không có MST đầy đủ")
+    else:
+        print("\n✔ Cây khung nhỏ nhất (MST):")
+        for u, v, w in mst_edges:
+            print(f"{u} - {v} (w={w})")
+
+        print(f"Tổng trọng số: {total}")
+
+    draw_mst(edges, mst_edges)
+
+#7.3 FORD-FULKERSON (TÌM LUỒNG CỰC ĐẠI)
+def ford_fulkerson_menu():
+    # Tạo đồ thị có hướng với dung lượng (capacity)
+    G = nx.DiGraph()
+    n = int(input("Nhập số cạnh (có dung lượng): "))
+    for _ in range(n):
+        u, v, c = input("Nhập cạnh (u v capacity): ").split()
+        G.add_edge(u, v, capacity=int(c))
+
+    s = input("Nhập đỉnh nguồn (source): ").strip()
+    t = input("Nhập đỉnh đích (sink): ").strip()
+
+    flow_value, flow_dict = nx.maximum_flow(G, s, t)
+    print(f"✔ Giá trị luồng cực đại: {flow_value}")
+    print("Chi tiết luồng:")
+    for u in flow_dict:
+        for v in flow_dict[u]:
+            if flow_dict[u][v] > 0:
+                print(f"  {u} → {v} : {flow_dict[u][v]}")
+
+    # Vẽ trực quan
+    pos = nx.spring_layout(G, seed=42)
+    edge_labels = {(u, v): f"{d['capacity']}" for u, v, d in G.edges(data=True)}
+    nx.draw(G, pos, with_labels=True, node_color='lightgreen', node_size=700,
+            arrows=True, arrowsize=20, width=2)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=10)
+    plt.title(f"Ford-Fulkerson: max flow = {flow_value}")
+    plt.show()
+
+#7.4 FLEURY (TÌM ĐƯỜNG ĐI EULER)
+def fleury_menu(edges):
+    """Tìm đường đi Euler bằng thuật toán Fleury."""
+    if not edges:
+        print("Chưa có đồ thị. Hãy nhập hoặc tải đồ thị trước.")
+        return
+    if directed:
+        print("⚠ Fleury chỉ áp dụng cho đồ thị VÔ HƯỚNG.")
+        return
+
+    # Xây dựng danh sách kề từ edges chung (giữ nguyên cấu trúc code gốc)
+    from collections import defaultdict
+    graph = defaultdict(list)
+    for u, v, w in edges:
+        graph[u].append(v)
+        graph[v].append(u)
+
+    def add_edge(u, v):
+        graph[u].append(v)
+        graph[v].append(u)
+
+    def remove_edge(u, v):
+        graph[u].remove(v)
+        graph[v].remove(u)
+
+    def dfs_fleury(v, visited):
+        visited.add(v)
+        count = 1
+        for i in graph[v]:
+            if i not in visited:
+                count += dfs_fleury(i, visited)
+        return count
+
+    def is_valid_edge(u, v):
+        if len(graph[u]) == 1:
+            return True
+        count1 = dfs_fleury(u, set())
+        remove_edge(u, v)
+        count2 = dfs_fleury(u, set())
+        add_edge(u, v)
+        return count1 == count2
+
+    def fleury(start):
+        u = start
+        path = []
+        while len(graph[u]) > 0:
+            for v in graph[u]:
+                if is_valid_edge(u, v):
+                    path.append((u, v))
+                    remove_edge(u, v)
+                    u = v
+                    break
+        return path
+
+    print(f"Các đỉnh hiện có: {', '.join(sorted(graph.keys()))}")
+    start = input("Nhập đỉnh bắt đầu: ").strip()
+    if start not in graph:
+        print(f"✘ Đỉnh '{start}' không tồn tại.")
+        return
+
+    result = fleury(start)
+
+    print("Đường đi Euler:")
+    for u, v in result:
+        print(f"  {u} → {v}")
+
+
+#7.5 HIERHOLZER (TÌM ĐƯỜNG ĐI EULER)
+def hierholzer_menu(edges):
+    """Tìm đường đi Euler bằng thuật toán Hierholzer."""
+    if not edges:
+        print("Chưa có đồ thị. Hãy nhập hoặc tải đồ thị trước.")
+        return
+    if directed:
+        print("⚠ Hierholzer chỉ áp dụng cho đồ thị VÔ HƯỚNG.")
+        return
+
+    # Xây dựng danh sách kề từ edges chung
+    from collections import defaultdict
+    graph = defaultdict(list)
+    for u, v, w in edges:
+        graph[u].append(v)
+        graph[v].append(u)
+
+    # Kiểm tra điều kiện Euler
+    odd_vertices = [v for v in graph if len(graph[v]) % 2 != 0]
+    if len(odd_vertices) not in (0, 2):
+        print(f"\n✘ Đồ thị KHÔNG có đường đi Euler!")
+        print(f"   (Có {len(odd_vertices)} đỉnh bậc lẻ, cần 0 hoặc 2)")
+        return
+
+    print(f"Các đỉnh hiện có: {', '.join(sorted(graph.keys()))}")
+    if len(odd_vertices) == 2:
+        print(f"   Gợi ý: nên bắt đầu từ đỉnh bậc lẻ ({odd_vertices[0]} hoặc {odd_vertices[1]})")
+    start = input("Nhập đỉnh bắt đầu: ").strip()
+    if start not in graph:
+        print(f"✘ Đỉnh '{start}' không tồn tại.")
+        return
+
+    # Thuật toán Hierholzer
+    stack = [start]
+    path  = []
+    while stack:
+        v = stack[-1]
+        if graph[v]:              # còn cạnh → đi tiếp
+            u = graph[v].pop()
+            graph[u].remove(v)    # vô hướng → xóa cả chiều ngược
+            stack.append(u)
+        else:                     # hết cạnh → thêm vào đường đi
+            path.append(stack.pop())
+    path = path[::-1]
+
+    # In kết quả
+    print(f"\n✔ Đường đi Euler: {' → '.join(path)}")
 #Main Chính
 def main():
     global edges, directed
@@ -612,6 +844,11 @@ def main():
         print("  6. Duyệt đồ thị (BFS / DFS)")
         print("  7. Kiểm tra đồ thị 2 phía")
         print("  8. Chuyển đổi biểu diễn đồ thị")
+        print("  --- Nâng cao ---")   
+        print("  9. Prim (Minimum Spanning Tree)")
+        print("  11. Trực quan hóa Ford-Fulkeron")
+        print("  12. Fleury (Đường đi Euler)")
+        print("  13. Hierholzer (Đường đi Euler)")
         print("  0. Thoát")
         print(f"{'='*45}")
  
@@ -646,7 +883,19 @@ def main():
 
         elif choice == '8':
             representation_menu(edges, directed)
+
+        elif choice == '9':
+            prim_menu(edges)
  
+        elif choice == '11':
+            ford_fulkerson_menu()
+        
+        elif choice == '12':
+            fleury_menu(edges)
+
+        elif choice == '13':
+            hierholzer_menu(edges)
+
         elif choice == '0':
             print("Tạm biệt!")
             break
@@ -657,5 +906,3 @@ def main():
 if __name__ == "__main__":
     main()
         
-  
-
